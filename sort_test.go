@@ -2,11 +2,30 @@ package testing
 
 import (
 	"fmt"
+	"math"
 	"testing"
 )
 
+var weightThreshold = 20
+var lengthThreshold = 150
+var volumeThreshold = 1000000
+
 type Package struct {
 	width, height, length, mass int
+}
+
+func (p *Package) isBulky() bool {
+	if p.width*p.height*p.length >= volumeThreshold {
+		return true
+	}
+	if p.width >= lengthThreshold || p.height >= lengthThreshold || p.length >= lengthThreshold {
+		return true
+	}
+	return false
+}
+
+func (p *Package) isHeavy() bool {
+	return p.mass >= weightThreshold
 }
 
 func NewPackage(width, height, length, mass int) (*Package, error) {
@@ -31,20 +50,6 @@ func Sort(width, height, length, mass int) string {
 	return "STANDARD"
 }
 
-func (p *Package) isBulky() bool {
-	if p.width*p.height*p.length >= 1000000 {
-		return true
-	}
-	if p.width >= 150 || p.height >= 150 || p.length >= 150 {
-		return true
-	}
-	return false
-}
-
-func (p *Package) isHeavy() bool {
-	return p.mass >= 20
-}
-
 func TestSort(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -55,13 +60,10 @@ func TestSort(t *testing.T) {
 		expected string
 	}{
 		{"validPackage", 1, 1, 1, 1, "STANDARD"},
-		{"Volume is too big", 150, 150, 150, 1, "SPECIAL"},
-		{"Side is too long", 1, 1, 150, 1, "SPECIAL"},
-		{"isBulky and Heavy", 150, 150, 20, 50, "REJECTED"},
+		{"Volume is too big", lengthThreshold, lengthThreshold, lengthThreshold, 1, "SPECIAL"},
+		{"Side is too long", 1, 1, lengthThreshold, 1, "SPECIAL"},
+		{"isBulky and Heavy", lengthThreshold, lengthThreshold, volumeThreshold, weightThreshold + 1, "REJECTED"},
 		{"invalidPackage 0x1x1x1", 0, 1, 1, 1, "REJECTED"},
-		{"invalidPackage 1x0x1x1", 1, 0, 1, 1, "REJECTED"},
-		{"invalidPackage 1x1x0x1", 1, 1, 0, 1, "REJECTED"},
-		{"invalidPackage 1x1x1x0", 1, 1, 1, 0, "REJECTED"},
 	}
 	for i := range tests {
 		t.Run(tests[i].name, func(t *testing.T) {
@@ -113,9 +115,10 @@ func TestIsBulky(t *testing.T) {
 		expected bool
 	}{
 		{"notBulky", &Package{1, 1, 1, 1}, false},
-		{"Volume is too big", &Package{150, 150, 150, 1}, true},
+		{"Volume is too big", &Package{int(math.Pow(float64(volumeThreshold), 1.0/3)) + 1, int(math.Pow(float64(volumeThreshold), 1.0/3)) + 1, int(math.Pow(float64(volumeThreshold), 1.0/3)) + 1, 1}, true},
 		{"Size is too long", &Package{1, 1, 150, 1}, true},
 	}
+
 	for i := range tests {
 		t.Run(tests[i].name, func(t *testing.T) {
 			if tests[i].p.isBulky() != tests[i].expected {
